@@ -129,9 +129,9 @@ namespace testing_back.Service
             TaskPriority? priorityFromTitle = ExtractPriorityFromTitle(ref title);
             DateTime? deadlineFromTitle = ExtractDeadlineFromTitle(ref title);
 
-            if (string.IsNullOrWhiteSpace(title))
+            if (string.IsNullOrWhiteSpace(title) || title.Length < 4)
             {
-                throw new ArgumentException("Название задачи не может быть пустым. Пожалуйста, введите название.");
+                throw new ArgumentException("Название задачи должно содержать минимум 4 символа после удаления макросов.");
             }
 
             var task = new TaskModel
@@ -151,6 +151,7 @@ namespace testing_back.Service
 
 
 
+
         public async Task<TaskModel> UpdateTaskAsync(int id, TaskDTO taskDto)
         {
             var task = await _context.Tasks.FindAsync(id);
@@ -163,6 +164,11 @@ namespace testing_back.Service
             TaskPriority? priorityFromTitle = ExtractPriorityFromTitle(ref title);
             DateTime? deadlineFromTitle = ExtractDeadlineFromTitle(ref title);
 
+            if (string.IsNullOrWhiteSpace(title) || title.Length < 4)
+            {
+                throw new ArgumentException("Название задачи должно содержать минимум 4 символа после удаления макросов.");
+            }
+
             task.Title = title;
             task.Description = taskDto.Description;
             task.Deadline = taskDto.Deadline?.ToUniversalTime() ?? deadlineFromTitle;
@@ -172,6 +178,7 @@ namespace testing_back.Service
             await _context.SaveChangesAsync();
             return task;
         }
+
 
 
 
