@@ -65,32 +65,39 @@ namespace testing_back.Service
             return await _context.Tasks.FindAsync(id);
         }
 
-        public async Task<TaskModel> CreateTaskAsync(TaskDTO taskDto)
+
+        public TaskPriority? ExtractPriorityFromTitle(ref string title)
         {
-            string title = taskDto.Title;
-            TaskPriority? priorityFromTitle = null;
-            DateTime? deadlineFromTitle = null;
+            TaskPriority? priority = null;
 
             if (title.Contains("!1"))
             {
-                priorityFromTitle = TaskPriority.Critical;
+                priority = TaskPriority.Critical;
                 title = title.Replace("!1", "").Trim();
             }
             else if (title.Contains("!2"))
             {
-                priorityFromTitle = TaskPriority.High;
+                priority = TaskPriority.High;
                 title = title.Replace("!2", "").Trim();
             }
             else if (title.Contains("!3"))
             {
-                priorityFromTitle = TaskPriority.Medium;
+                priority = TaskPriority.Medium;
                 title = title.Replace("!3", "").Trim();
             }
             else if (title.Contains("!4"))
             {
-                priorityFromTitle = TaskPriority.Low;
+                priority = TaskPriority.Low;
                 title = title.Replace("!4", "").Trim();
             }
+
+            return priority;
+        }
+
+
+        public DateTime? ExtractDeadlineFromTitle(ref string title)
+        {
+            DateTime? deadline = null;
 
             var regex = new System.Text.RegularExpressions.Regex(@"!before\s*(\d{2})[.-](\d{2})[.-](\d{4})");
             var match = regex.Match(title);
@@ -102,7 +109,7 @@ namespace testing_back.Service
 
                 try
                 {
-                    deadlineFromTitle = new DateTime(year, month, day).ToUniversalTime();
+                    deadline = new DateTime(year, month, day).ToUniversalTime();
                 }
                 catch (Exception)
                 {
@@ -110,6 +117,17 @@ namespace testing_back.Service
 
                 title = regex.Replace(title, "").Trim();
             }
+
+            return deadline;
+        }
+
+
+        public async Task<TaskModel> CreateTaskAsync(TaskDTO taskDto)
+        {
+            string title = taskDto.Title;
+
+            TaskPriority? priorityFromTitle = ExtractPriorityFromTitle(ref title);
+            DateTime? deadlineFromTitle = ExtractDeadlineFromTitle(ref title);
 
             if (string.IsNullOrWhiteSpace(title))
             {
@@ -126,8 +144,10 @@ namespace testing_back.Service
 
             _context.Tasks.Add(task);
             await _context.SaveChangesAsync();
+
             return task;
         }
+
 
 
 
@@ -140,38 +160,19 @@ namespace testing_back.Service
             }
 
             string title = taskDto.Title;
-            TaskPriority? priorityFromTitle = null;
-
-            if (title.Contains("!1"))
-            {
-                priorityFromTitle = TaskPriority.Critical;
-                title = title.Replace("!1", "").Trim();
-            }
-            else if (title.Contains("!2"))
-            {
-                priorityFromTitle = TaskPriority.High;
-                title = title.Replace("!2", "").Trim();
-            }
-            else if (title.Contains("!3"))
-            {
-                priorityFromTitle = TaskPriority.Medium;
-                title = title.Replace("!3", "").Trim();
-            }
-            else if (title.Contains("!4"))
-            {
-                priorityFromTitle = TaskPriority.Low;
-                title = title.Replace("!4", "").Trim();
-            }
+            TaskPriority? priorityFromTitle = ExtractPriorityFromTitle(ref title);
+            DateTime? deadlineFromTitle = ExtractDeadlineFromTitle(ref title);
 
             task.Title = title;
             task.Description = taskDto.Description;
-            task.Deadline = taskDto.Deadline;
+            task.Deadline = taskDto.Deadline?.ToUniversalTime() ?? deadlineFromTitle;
             task.Priority = taskDto.Priority ?? priorityFromTitle ?? task.Priority;
             task.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return task;
         }
+
 
 
         public async Task<bool> DeleteTaskAsync(int id)
@@ -195,7 +196,7 @@ namespace testing_back.Service
                 return null;
             }
 
-            task.Status = task.Deadline < DateTime.UtcNow ? StatusTask.Late : StatusTask.Completed;
+            task.Status = StatusTask.Completed;
             await _context.SaveChangesAsync();
             return task;
         }
@@ -208,7 +209,7 @@ namespace testing_back.Service
                 return null;
             }
 
-            task.Status = task.Deadline < DateTime.UtcNow ? StatusTask.Overdue : StatusTask.Active;
+            task.Status = StatusTask.Active;
             await _context.SaveChangesAsync();
             return task;
         }
