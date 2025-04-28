@@ -134,12 +134,17 @@ namespace testing_back.Service
                 throw new ArgumentException("Название задачи должно содержать минимум 4 символа после удаления макросов.");
             }
 
+            var deadline = taskDto.Deadline?.ToUniversalTime() ?? deadlineFromTitle;
+            var now = DateTime.UtcNow;
+
             var task = new TaskModel
             {
                 Title = title,
                 Description = taskDto.Description,
-                Deadline = taskDto.Deadline?.ToUniversalTime() ?? deadlineFromTitle,
-                Priority = taskDto.Priority ?? priorityFromTitle ?? TaskPriority.Medium
+                Deadline = deadline,
+                Priority = taskDto.Priority ?? priorityFromTitle ?? TaskPriority.Medium,
+                Status = (deadline.HasValue && now > deadline.Value) ? StatusTask.Overdue : StatusTask.Active,
+                CreatedAt = now
             };
 
             _context.Tasks.Add(task);
@@ -147,6 +152,7 @@ namespace testing_back.Service
 
             return task;
         }
+
 
 
 
@@ -169,15 +175,20 @@ namespace testing_back.Service
                 throw new ArgumentException("Название задачи должно содержать минимум 4 символа после удаления макросов.");
             }
 
+            var deadline = taskDto.Deadline?.ToUniversalTime() ?? deadlineFromTitle ?? task.Deadline;
+            var now = DateTime.UtcNow;
+
             task.Title = title;
             task.Description = taskDto.Description;
-            task.Deadline = taskDto.Deadline?.ToUniversalTime() ?? deadlineFromTitle;
+            task.Deadline = deadline;
             task.Priority = taskDto.Priority ?? priorityFromTitle ?? task.Priority;
-            task.UpdatedAt = DateTime.UtcNow;
+            task.UpdatedAt = now;
+            task.Status = (deadline.HasValue && now > deadline.Value) ? StatusTask.Overdue : StatusTask.Active;
 
             await _context.SaveChangesAsync();
             return task;
         }
+
 
 
 
@@ -203,10 +214,21 @@ namespace testing_back.Service
                 return null;
             }
 
-            task.Status = StatusTask.Completed;
+            var now = DateTime.UtcNow;
+
+            if (task.Deadline.HasValue && now > task.Deadline.Value)
+            {
+                task.Status = StatusTask.Late;
+            }
+            else
+            {
+                task.Status = StatusTask.Completed;
+            }
+
             await _context.SaveChangesAsync();
             return task;
         }
+
 
         public async Task<TaskModel> MarkTaskAsActiveAsync(int id)
         {
@@ -216,9 +238,25 @@ namespace testing_back.Service
                 return null;
             }
 
-            task.Status = StatusTask.Active;
+            var now = DateTime.UtcNow;
+
+            if (task.Status == StatusTask.Overdue)
+            {
+                task.Status = StatusTask.Late;
+            }
+            else if (task.Deadline.HasValue && now > task.Deadline.Value)
+            {
+                task.Status = StatusTask.Overdue;
+            }
+            else
+            {
+                task.Status = StatusTask.Active;
+            }
+
             await _context.SaveChangesAsync();
             return task;
         }
+
+
     }
 }
