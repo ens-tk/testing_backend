@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace testing_back.Models
 {
@@ -18,6 +19,7 @@ namespace testing_back.Models
         public string? Description { get; set; }
         public DateTime? Deadline { get; set; }
         public StatusTask Status { get; set; } = StatusTask.Active;
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public TaskPriority Priority { get; set; } = TaskPriority.Medium;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }

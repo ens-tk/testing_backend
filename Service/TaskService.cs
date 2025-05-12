@@ -142,7 +142,8 @@ namespace testing_back.Service
                 Title = title,
                 Description = taskDto.Description,
                 Deadline = deadline,
-                Priority = taskDto.Priority ?? priorityFromTitle ?? TaskPriority.Medium,
+                Priority = taskDto.Priority.HasValue ? taskDto.Priority.Value : TaskPriority.Medium,
+
                 Status = (deadline.HasValue && now > deadline.Value) ? StatusTask.Overdue : StatusTask.Active,
                 CreatedAt = now
             };
@@ -181,7 +182,8 @@ namespace testing_back.Service
             task.Title = title;
             task.Description = taskDto.Description;
             task.Deadline = deadline;
-            task.Priority = taskDto.Priority ?? priorityFromTitle ?? task.Priority;
+            task.Priority = taskDto.Priority.HasValue ? taskDto.Priority.Value : TaskPriority.Medium;
+
             task.UpdatedAt = now;
             task.Status = (deadline.HasValue && now > deadline.Value) ? StatusTask.Overdue : StatusTask.Active;
 
@@ -211,51 +213,63 @@ namespace testing_back.Service
             var task = await _context.Tasks.FindAsync(id);
             if (task == null)
             {
-                return null;
+                return null; // Задача не найдена
+            }
+
+            // Проверка, если задача уже завершена
+            if (task.Status == StatusTask.Completed || task.Status == StatusTask.Late)
+            {
+                throw new InvalidOperationException("Task is already completed."); // Ошибка, если задача уже завершена
             }
 
             var now = DateTime.UtcNow;
 
             if (task.Deadline.HasValue && now > task.Deadline.Value)
             {
-                task.Status = StatusTask.Late;
+                task.Status = StatusTask.Late; // Если просрочена, меняем статус на Late
             }
             else
             {
-                task.Status = StatusTask.Completed;
+                task.Status = StatusTask.Completed; // Если не просрочена, меняем на Completed
             }
 
             await _context.SaveChangesAsync();
             return task;
         }
-
 
         public async Task<TaskModel> MarkTaskAsActiveAsync(int id)
         {
             var task = await _context.Tasks.FindAsync(id);
             if (task == null)
             {
-                return null;
+                return null; // Задача не найдена
+            }
+
+            // Проверка, если задача уже активна
+            if (task.Status == StatusTask.Active || task.Status == StatusTask.Overdue)
+            {
+                throw new InvalidOperationException("Task is already active."); // Ошибка, если задача уже активна
             }
 
             var now = DateTime.UtcNow;
 
             if (task.Status == StatusTask.Overdue)
             {
-                task.Status = StatusTask.Late;
+                task.Status = StatusTask.Late; // Если задача просрочена, меняем на Late
             }
             else if (task.Deadline.HasValue && now > task.Deadline.Value)
             {
-                task.Status = StatusTask.Overdue;
+                task.Status = StatusTask.Overdue; // Если срок прошел, меняем на Overdue
             }
             else
             {
-                task.Status = StatusTask.Active;
+                task.Status = StatusTask.Active; // Если все в порядке, меняем на Active
             }
 
             await _context.SaveChangesAsync();
             return task;
         }
+
 
 
     }

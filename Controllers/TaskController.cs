@@ -76,28 +76,44 @@ namespace testing_back.Controllers
             return Ok(task);
         }
 
+
+
         [HttpPatch("{id}/complete")]
         public async Task<IActionResult> MarkTaskAsCompleted(int id)
         {
-            var task = await _taskService.MarkTaskAsCompletedAsync(id);
-            if (task == null)
+            try
             {
-                return NotFound("Task not found.");
-            }
+                var task = await _taskService.MarkTaskAsCompletedAsync(id);
+                if (task == null)
+                {
+                    return NotFound("Task not found.");
+                }
 
-            return Ok(task);
+                return Ok(task);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message); // Возвращаем ошибку 400 с сообщением
+            }
         }
 
         [HttpPatch("{id}/active")]
         public async Task<IActionResult> MarkTaskAsActive(int id)
         {
-            var task = await _taskService.MarkTaskAsActiveAsync(id);
-            if (task == null)
+            try
             {
-                return NotFound("Task not found.");
-            }
+                var task = await _taskService.MarkTaskAsActiveAsync(id);
+                if (task == null)
+                {
+                    return NotFound("Task not found.");
+                }
 
-            return Ok(task);
+                return Ok(task);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message); // Возвращаем ошибку 400 с сообщением
+            }
         }
     }
 }
